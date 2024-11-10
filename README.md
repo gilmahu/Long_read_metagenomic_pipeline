@@ -1,3 +1,10 @@
+## Pipeline Flow Diagram
+
+![Pipeline Flow](Fig1_Overall_workflow.png)
+
+**Figure:** Overview of the ICRECT Long-Read Metagenomic Analysis Pipeline.
+
+
 Long-Read Metagenomic Analysis Pipeline
 Overview
 This repository contains a complete pipeline for analyzing long-read metagenomic data generated from Nanopore sequencing. The pipeline covers demultiplexing, quality control, host genome removal, taxonomic classification, abundance estimation, and antimicrobial resistance gene (ARG) detection. The analysis is completed using both R and Jupyter Notebook for comprehensive data visualization.
