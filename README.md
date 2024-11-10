@@ -8,7 +8,7 @@ Long-Read Metagenomic Analysis Pipeline/
 
 ├── scripts/               # Shell scripts for each analysis step
 ├── notebooks/             # Jupyter Notebook for ARG analysis
-├─R_analysis/            # R Markdown file for compositional analysis
+├─R_analysis/              # R Markdown file for compositional analysis
 └── README.md              # This documentation file
 Installation & Dependencies
 This pipeline requires the following tools:
@@ -84,7 +84,7 @@ conda activate icrect_env
 jupyter nbconvert --execute notebooks/ARG_Mapping_rgi_bwt_ONT.ipynb --to html
 Output: notebooks/ARG_Mapping_rgi_bwt_ONT.html
 
-Running the Full Pipeline with Master Script
+**Running the Full Pipeline with Master Script**
 You can run the entire pipeline in one command using the master script (run_pipeline.sh):
 
 How to Use the Master Script
