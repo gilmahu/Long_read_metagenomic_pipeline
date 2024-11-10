@@ -1,0 +1,1106 @@
+---
+title: "icrect_year1"
+author: "Gildas"
+date: "2024-June_2"
+output: html_document
+---
+## THIS IS MY OVERALL YEAR1 DATA ANALYSIS FLOW 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(root.dir = '/Users/tnc203/Documents/tmp_wgs_vulnificus/remy_icrect_analysis/method_paper/')
+setwd("/Users/tnc203/Documents/tmp_wgs_vulnificus/remy_icrect_analysis/method_paper/")
+```
+
+## loading overall metadata file  
+
+```{r}
+library(readr)
+gil_overall_metadata <- read_delim("metadata_hww1_new.csv", delim = ";")
+colnames(gil_overall_metadata)
+write_csv(gil_overall_metadata, "gil_filtered_metadata.csv")
+getwd()
+```
+
+### variables of interest
+"Sample_ID"       "Sample_type"     "Collection_date" "Hospital"        "Read_counts" "Classification_rate"
+
+## Overall sample distribution 
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+gil_filtered_metadata <- read_delim("gil_filtered_metadata.csv", delim = ";")
+write_csv(gil_filtered_metadata, "gil_filtered_metadata.csv")
+
+# Convert Collection_date to a factor to enforce order
+gil_filtered_metadata$Collection_date <- factor(gil_filtered_metadata$Collection_date, 
+                                levels = c("Sept_2022", "Dec_2022", "April_2023", "June_2023"))
+
+library(dplyr)
+library(ggplot2)
+
+# Clean up the Sample_type column by removing leading/trailing spaces and converting to title case
+gil_filtered_metadata <- gil_filtered_metadata %>%
+  mutate(Sample_type = trimws(Sample_type)) %>%
+  mutate(Sample_type = tolower(Sample_type)) %>%
+  mutate(Sample_type = ifelse(Sample_type == "treated", "Treated", "Raw"))  # Standardize the values
+
+# Custom colors for Sample Type
+custom_colors <- c("Raw" = "#FF6347", "Treated" = "#4682B4")
+
+# Create an enhanced dot plot to indicate presence/absence with colored points
+p_overall_distri <- ggplot(gil_filtered_metadata, aes(x = Collection_date, y = Sample_type)) +
+  geom_point(aes(fill = Sample_type), size = 8, shape = 21, color = "black", stroke = 1.5, alpha = 0.9) +  # Ensure fill color is applied
+  facet_wrap(~ Hospital) +
+  labs(x = "Collection Date", y = "Sample Type") +
+  scale_fill_manual(values = custom_colors) +  # Use custom colors for better distinction
+  theme_minimal(base_size = 14) +  # Increase base font size for readability
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 12, face = "bold"),  # Improve axis text
+    axis.text.y = element_text(size = 12, face = "bold"),
+    strip.text = element_text(size = 14, face = "bold", color = "darkblue"),  # Improve facet label appearance
+    panel.grid.major = element_line(color = "grey90", linetype = "dotted"),  # Light dotted grid for better clarity
+    panel.background = element_rect(fill = "aliceblue"),  # Light blue panel background
+    legend.position = "top",  # Place legend at the top for better aesthetics
+    legend.title = element_blank(),  # Remove legend title for a cleaner look
+    legend.text = element_text(size = 12)  # Improve legend text size
+  ) +
+  guides(fill = guide_legend(override.aes = list(size = 6)))  # Make legend points larger
+
+p_overall_distri
+
+ggsave("p_overall_distri.png", p_overall_distri, width = 8, height = 6, dpi = 300)
+
+```
+
+
+
+### Number of reads 
+```{r}
+library(dplyr)
+library(ggplot2)
+
+# Create a box plot of the number of reads per sample
+p_read_counts <- ggplot(gil_filtered_metadata, aes(x = Sample_type, y = Read_counts, fill = Sample_type)) +
+  geom_boxplot(alpha = 0.7, outlier.shape = 16, outlier.size = 3) +
+  facet_wrap(~ Hospital) +
+  labs(x = "Sample Type", y = "Number of Reads") +
+  scale_fill_manual(values = custom_colors) +  # Use the same custom colors as before
+  theme_minimal(base_size = 14) +  # Increase base font size for readability
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 12, face = "bold"),  # Improve axis text
+    axis.text.y = element_text(size = 12, face = "bold"),
+    strip.text = element_text(size = 14, face = "bold", color = "darkblue"),  # Improve facet label appearance
+    panel.grid.major = element_line(color = "grey90", linetype = "dotted"),  # Light dotted grid for better clarity
+    panel.background = element_rect(fill = "aliceblue"),  # Light blue panel background
+    legend.position = "top",  # Place legend at the top for better aesthetics
+    legend.title = element_blank(),  # Remove legend title for a cleaner look
+    legend.text = element_text(size = 12)  # Improve legend text size
+  ) +
+  guides(fill = guide_legend(override.aes = list(size = 6)))  # Make legend points larger
+p_read_counts
+ggsave("p_read_counts.png", p_read_counts, width = 8, height = 6, dpi = 300)
+```
+
+
+## classsification rates 
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+
+# Create a new column for the unclassified rate
+gil_filtered_metadata <- gil_filtered_metadata %>%
+  mutate(Unclassified_rate = 100 - Classification_rate)
+
+# Reshape the data for stacked bar plotting
+gil_long <- gil_filtered_metadata %>%
+  pivot_longer(cols = c(Classification_rate, Unclassified_rate), 
+               names_to = "Rate_type", 
+               values_to = "Rate")
+
+# Custom colors for Classification and Unclassified rates
+rate_colors <- c("Classification_rate" = "#145a2f", "Unclassified_rate" = "#f0dc6d")  # Classify with blue and Unclassified with sandy color
+
+# Create an enhanced stacked bar plot for presentation
+p_classification <- ggplot(gil_long, aes(x = Sample_ID, y = Rate, fill = Rate_type)) +
+  geom_bar(stat = "identity", position = "stack", alpha = 0.9, color = "black", size = 0.3) +
+  geom_text(aes(label = paste0(Rate, "%")), position = position_stack(vjust = 0.5), size = 4, color = "black", fontface = "bold") +
+  labs(x = "Sample ID", y = "Taxonomic Classification Rate (%)") +
+  scale_fill_manual(values = rate_colors, labels = c("Classified", "Unclassified")) +
+  scale_y_continuous(limits = c(0, 100), breaks = seq(0, 100, by = 10)) +
+  theme_classic(base_size = 16) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 14, face = "bold", color = "#4B0082"),  # Purple x-axis labels for readability
+    axis.text.y = element_text(size = 14, face = "bold", color = "#4B0082"),
+    axis.title.x = element_text(size = 18, face = "bold", margin = margin(t = 10), color = "#2F4F4F"),
+    axis.title.y = element_text(size = 18, face = "bold", margin = margin(r = 10), color = "#2F4F4F"),
+    plot.title = element_text(size = 20, face = "bold", hjust = 0.5, color = "#333333"),  # Centered title for presentation
+    panel.grid.major.y = element_line(color = "grey80", linetype = "dashed"),  # Dashed grid lines for readability
+    panel.background = element_rect(fill = "lavenderblush"),  # Light background color to make bars pop
+    legend.position = "top",  # Place legend at the top for easy visibility
+    legend.title = element_blank(),  # Remove legend title for a cleaner look
+    legend.text = element_text(size = 14, face = "bold", color = "#333333"),
+    plot.margin = margin(20, 20, 20, 20)
+  ) +
+  guides(fill = guide_legend(override.aes = list(size = 8)))  # Larger legend keys for visibility
+
+p_classification
+
+ggsave("p_classification.png", p_classification, width = 8, height = 8, dpi = 300)
+```
+
+
+
+
+
+******* biom  before MAG integration ********* 
+## Analyse the microbiome 
+
+## BIOM IMPORT 
+
+
+# Setup
+```{r}
+library(knitr)
+library(tidyverse)
+library(dplyr)
+library(phyloseq)
+library(readr)
+```
+
+# Load BIOM file and add metadata
+The BIOM file contains samples names and relative abundance data after braken. You need to add sample metadata like subject id and body site etc. 
+
+```{r}
+#the sample_names need to match the metadata rownames
+biom=import_biom("hww_filt.biom",parseFunction = parse_taxonomy_greengenes)
+snames<-sample_names(biom)
+snames #look at sample names and trim off any extra bits from the file name
+#my sample names look like this: ICM10_report_bracken_species ##remove that
+sample_names(biom)<-sub("_report_bracken_species","",snames)
+# look at the new sample names 
+sample_names(biom)
+#import metadata and add it to the phyloseq object
+gil_filtered_metadata=read.csv("gil_filtered_metadata.csv",header=T,row.names=1)
+sample_data(biom)<-gil_filtered_metadata
+gil_filtered_metadata
+```
+
+
+# Write out RDS file 
+```{r}
+saveRDS(biom,"full_ps.rds")
+#checking the saved rda
+full_ps=readRDS("full_ps.rds")
+full_ps
+sample_data_df <- data.frame(sample_data(full_ps))
+```
+
+
+
+## filtering out the contaminants, along with filtration based on prevalence and abundance
+#filter out Phyla that are present in less than 5% of the samples or contribute less than 0.1% to the total microbial counts (total abundance) across the entire dataset
+
+```{r}
+library(phyloseq)
+library(plyr)
+# Step 1: Remove human reads
+contaminant_genera <- c('Homo') 
+full_noConta_ps <- subset_taxa(full_ps, !Genus %in% contaminant_genera)
+# Step 2: Remove any reads not classified at the Phylum level
+full_noPhylum_ps <- subset_taxa(full_noConta_ps, !is.na(Phylum) & Phylum != "")
+
+# Step 3: Calculate the prevalence for each taxon
+prev <- apply(X=otu_table(full_noConta_ps), MARGIN=ifelse(taxa_are_rows(full_noConta_ps), yes=1, no=2), FUN=function(x) { sum(x > 0) })
+
+# Step 4: Create a data frame including prevalence, total abundance, and taxonomic information
+df_prev <- data.frame(Prevalence=prev, TotAbund=taxa_sums(full_noConta_ps), tax_table(full_noConta_ps))
+
+# Step 5: Aggregate data by Phylum and calculate mean prevalence and total abundance for each Phylum
+aggregated_phylum_data <- plyr::ddply(df_prev, 'Phylum', function(df1) {
+    cbind(meanPrevalence=mean(df1$Prevalence), totalPrevalence=sum(df1$Prevalence),
+          meanTotalAbundance=mean(df1$TotAbund), totalAbundance=sum(df1$TotAbund))
+})
+
+# Step 6: Define prevalence and abundance thresholds
+prevalence_threshold <- 0.05 * nsamples(full_noConta_ps)  # at least 5% of samples
+abundance_threshold <- 0.001 * sum(taxa_sums(full_noConta_ps))  # at least 0.1% of total abundance
+
+# Step 7: Identify Phyla that meet both prevalence and abundance criteria
+compliant_phyla <- aggregated_phylum_data$Phylum[aggregated_phylum_data$totalPrevalence >= prevalence_threshold & aggregated_phylum_data$totalAbundance >= abundance_threshold]
+
+# Step 8: Filter the original phyloseq object to keep only taxa belonging to compliant Phyla
+full_ps_filtered <- subset_taxa(full_noConta_ps, tax_table(full_noConta_ps)[, "Phylum"] %in% compliant_phyla)
+
+sample_data_df <- data.frame(sample_data(full_ps_filtered))
+
+
+# Step 9: Convert to Relative Abundances
+full_ps_ra <- transform_sample_counts(full_ps_filtered, function(x) x / sum(x))
+# Step 10: Save the filtered Phyloseq object for downstream analysis
+saveRDS(full_ps_ra, "full_ps_ra.rds")
+```
+
+
+
+## visualize taxa progression after filtering steps 
+
+```{r}
+library(ggplot2)
+# Calculate the number of taxa at each step
+taxa_counts <- c(
+  original = ntaxa(full_ps),
+  no_human = ntaxa(full_noConta_ps),
+  no_unclassified_phylum = ntaxa(full_noPhylum_ps),
+  prev_abund_filtered = ntaxa(full_ps_filtered)
+)
+# Define the step labels in the order of appearance
+steps <- c("Original", "No human", "No Unclassified Phylum", "prev5_abund0.1_filt")
+# Create a data frame for plotting
+taxa_df_plot <- data.frame(
+  step = factor(steps, levels = steps),
+  number_of_taxa = taxa_counts
+)
+# Define custom colors for each step
+custom_colors <- c("Original" = "#66C2A5", "No human" = "#FC8D62", 
+                   "No Unclassified Phylum" = "#8DA0CB", "prev5_abund0.1_filt" = "#E78AC3")
+
+# Create the beautified bar plot
+p_compare_taxa <- ggplot(taxa_df_plot, aes(x = step, y = number_of_taxa, fill = step)) +
+  geom_bar(stat = "identity", alpha = 0.9, color = "black", size = 0.4) +  # Add black border and slight transparency
+  geom_text(aes(label = number_of_taxa), vjust = -0.5, size = 5, fontface = "bold", color = "black") +  # Bold, larger labels
+  scale_fill_manual(values = custom_colors) +  # Use custom colors
+  theme_classic(base_size = 16) +  # Change to classic theme with larger base size
+  labs(#title = "Number of Taxa at Each Filtration Step",
+       x = "Normalisation steps",
+       y = "Number of Taxa") +
+  theme(
+    plot.title = element_text(size = 20, face = "bold", hjust = 0.5, color = "#333333"),  # Bold centered title
+    axis.title.x = element_text(size = 16, face = "bold", margin = margin(t = 10), color = "#2F4F4F"),
+    axis.title.y = element_text(size = 16, face = "bold", margin = margin(r = 10), color = "#2F4F4F"),
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 14, face = "bold", color = "#4B0082"),  # Enhanced x-axis labels
+    axis.text.y = element_text(size = 14, face = "bold", color = "#4B0082"),
+    legend.position = "none",  # Remove legend to keep plot clean (optional for a small number of steps)
+    panel.grid.major.y = element_line(color = "grey80", linetype = "dotted"),  # Dashed grid lines for y-axis
+    plot.margin = margin(20, 20, 20, 20),  # Add some margin for spacing
+    panel.background = element_rect(fill = "aliceblue")  # Light blue background for plot panel
+  )
+
+# Display the beautified plot
+p_compare_taxa
+
+# Save the plot to a file
+ggsave(p_compare_taxa, filename = "p_compare_taxa.png", width = 10, height = 8, dpi = 300)
+```
+
+
+
+```{r}
+library(phyloseq)
+full_ps_ra <- transform_sample_counts(full_ps_filtered, function(x) x / sum(x))
+saveRDS(full_ps_ra, "full_ps_ra.rds")
+```
+
+```{r}
+plot_richness(full_ps_filtered, x ="Hospital", color ="Sample_type", measures =c("Shannon","Simpson"))
+```
+
+
+#quick NMDS ordination 
+```{r}
+ord_nmds <- ordinate(full_ps_filtered, method ="NMDS", distance ="bray")
+plot_ordination(full_ps_filtered, ord_nmds, color ="Sample_type", shape ="Hospital")+
+  geom_point(size =3)+
+  theme_minimal()
+```
+
+
+# alpha diversity metrics
+
+```{r}
+library(phyloseq)
+library(ggplot2)
+library(reshape2)
+library(ggpubr)
+
+# Assuming full_ps_filtered is your phyloseq object already filtered as needed
+alphaDiv <- data.frame(
+  estimate_richness(full_ps_filtered, measures = c("Shannon")),
+  sample_data(full_ps_filtered),
+  Sample_ID = sample_names(full_ps_filtered)
+)
+
+# Melt the data frame for easier plotting
+dfm <- melt(alphaDiv, id.vars = c("Sample_ID", colnames(sample_data(full_ps_filtered))))
+dfm$value <- as.numeric(as.character(dfm$value))
+
+# Define comparisons for statistical test between Hospitals
+hospital_comparisons <- list(
+  c("TBH", "VNCH")
+)
+
+# Create the boxplot, faceted by Hospital, and add statistical comparisons
+p_alpha_div <- ggplot(dfm[dfm$variable == "Shannon", ], aes(x = Sample_type, y = value, fill = Sample_type)) +
+  geom_boxplot(outlier.shape = NA, size = 0.8) +  # Remove outliers and adjust border thickness
+  geom_jitter(position = position_jitter(width = 0.15), alpha = 0.6, size = 2) +  # Add jitter for individual points
+  facet_wrap(~ Hospital, scales = "free_x") +  # Faceting by Hospital
+  stat_compare_means(method = "wilcox.test", label = "p.format", label.y = max(dfm$value) * 1.15) +  # Add Raw vs Treated comparison
+  stat_compare_means(aes(group = Hospital), comparisons = hospital_comparisons, method = "wilcox.test", label = "p.format", label.y = max(dfm$value) * 1.3) +  # Compare between Hospitals
+  scale_fill_brewer(palette = "Set2") +  # Use a color palette that keeps colors distinct
+  labs(
+    #title = "Shannon Diversity Index Comparison by Hospital and Sample Type",
+    y = "Shannon Diversity Index",
+    x = "Sample Type",
+    fill = "Sample Type"
+  ) +
+  theme_bw(base_size = 16) +
+  theme(
+    plot.title = element_text(size = 22, face = "bold", hjust = 0.5, color = "#333333"),
+    axis.title.x = element_text(size = 18, face = "bold", margin = margin(t = 10), color = "#4B0082"),
+    axis.title.y = element_text(size = 18, face = "bold", margin = margin(r = 10), color = "#4B0082"),
+    axis.text.x = element_text(size = 14, face = "bold", angle = 45, hjust = 1, color = "#4B0082"),
+    axis.text.y = element_text(size = 14, face = "bold", color = "#4B0082"),
+    strip.text = element_text(size = 16, face = "bold", color = "#333333"),
+    legend.position = "top",
+    legend.title = element_blank(),
+    legend.text = element_text(size = 14, face = "bold"),
+    legend.key.size = unit(1.5, "lines"),
+    panel.grid.major.y = element_line(color = "grey80", linetype = "dotted")
+  ) +
+  guides(fill = guide_legend(override.aes = list(size = 6)))  # Increase the size of the legend symbols for clarity
+
+# Print the enhanced plot
+print(p_alpha_div)
+
+ggsave(p_alpha_div, filename = "p_alpha_div.png", width = 10, height = 8, dpi = 300)
+```
+
+
+
+#Pcoa  
+
+```{r}
+library(phyloseq)
+library(ggplot2)
+
+pcoa_icm <- ordinate(full_ps_filtered, method = "PCoA", distance = "bray")
+
+p_pcoa_icm <- plot_ordination(full_ps_filtered, pcoa_icm, color = "Sample_type", shape = "Sample_type") +
+  stat_ellipse(type = "t", level = 0.95, aes(fill = Sample_type), geom = "polygon", alpha = 0.3, color = NA) +  
+  geom_point(size = 3, aes(color = Sample_type)) + 
+  scale_fill_brewer(palette = "Set1") +  
+  scale_color_brewer(palette = "Set1") +
+  theme_minimal() +
+  labs(color = "Sample_type", fill = "Sample_type") +
+  theme(legend.position = "right", plot.title = element_text(hjust = 0.5))
+print(p_pcoa_icm)
+
+#ggsave("p_pcoa_unfilt.png", plot = p_pcoa_unfilt, width = 12, height = 10, dpi = 300)
+```
+
+
+```{r}
+library(phyloseq)
+library(ggplot2)
+library(gridExtra)
+
+# Perform PCoA ordination
+pcoa_icm <- ordinate(full_ps_filtered, method = "PCoA", distance = "bray")
+
+# PCoA plot faceted by Sample Type
+p_pcoa_sample_type <- plot_ordination(full_ps_filtered, pcoa_icm, color = "Sample_type", shape = "Sample_type") +
+  stat_ellipse(type = "t", level = 0.95, aes(fill = Sample_type), geom = "polygon", alpha = 0.2, color = NA) +
+  geom_point(size = 4, aes(color = Sample_type)) +
+  scale_fill_brewer(palette = "Set1") +
+  scale_color_brewer(palette = "Set1") +
+  theme_classic(base_size = 16) +
+  labs(color = "Sample Type", fill = "Sample Type", title = "PCoA by Sample Type") +
+  theme(
+    legend.position = "top",
+    plot.title = element_text(hjust = 0.5, size = 20, face = "bold", color = "#333333"),
+    axis.title = element_text(size = 16, face = "bold", color = "#4B0082"),
+    axis.text = element_text(size = 14, color = "#4B0082"),
+    panel.grid.major = element_line(color = "grey80", linetype = "dotted"),
+    strip.text = element_text(size = 16, face = "bold", color = "#333333")
+  ) +
+  guides(shape = "none")  # Remove the shape legend
+
+# PCoA plot faceted by Hospital
+p_pcoa_hospital <- plot_ordination(full_ps_filtered, pcoa_icm, color = "Hospital", shape = "Hospital") +
+  stat_ellipse(type = "t", level = 0.95, aes(fill = Hospital), geom = "polygon", alpha = 0.2, color = NA) +
+  geom_point(size = 4, aes(color = Hospital)) +
+  scale_fill_brewer(palette = "Set2") +
+  scale_color_brewer(palette = "Set2") +
+  theme_classic(base_size = 16) +
+  labs(color = "Hospital", fill = "Hospital", title = "PCoA by Hospital") +
+  theme(
+    legend.position = "top",
+    plot.title = element_text(hjust = 0.5, size = 20, face = "bold", color = "#333333"),
+    axis.title = element_text(size = 16, face = "bold", color = "#4B0082"),
+    axis.text = element_text(size = 14, color = "#4B0082"),
+    panel.grid.major = element_line(color = "grey80", linetype = "dotted"),
+    strip.text = element_text(size = 16, face = "bold", color = "#333333")
+  ) +
+  guides(shape = "none")  # Remove the shape legend
+
+# Arrange the two plots in one figure
+combined_pcoa <- grid.arrange(p_pcoa_sample_type, p_pcoa_hospital, ncol = 2)
+
+# Print the combined plot
+print(combined_pcoa)
+ggsave(combined_pcoa, filename = "combined_pcoa.png", width = 15, height = 8, dpi = 300)
+```
+
+
+
+
+
+## Display kingdom RA for some samples 
+```{r}
+library(phyloseq)
+library(ggplot2)
+
+# Transform to relative abundance
+full_ps_ra <- transform_sample_counts(full_ps_filtered, function(x) x / sum(x))
+
+# Aggregate data to Kingdom level
+kingdom_level <- tax_glom(full_ps_ra, taxrank = "Kingdom")
+
+# Convert phyloseq object to a data frame for plotting
+kingdom_df <- psmelt(kingdom_level)
+
+# Add a small constant to ensure visibility of very low abundance taxa
+kingdom_df$Abundance <- kingdom_df$Abundance + 1e-5
+
+# Define custom colors for each Kingdom
+kingdom_colors <- c("Archaea" = "red", "Bacteria" = "#d2f2f6", "Viruses" = "blue")
+
+# Create the stacked bar plot
+p_kingdom <- ggplot(kingdom_df, aes(x = Sample, y = Abundance, fill = Kingdom)) +
+  geom_bar(stat = "identity", position = "stack") +
+  scale_y_continuous(labels = scales::percent) +  # Display y-axis as percentage
+  scale_fill_manual(values = kingdom_colors) +  # Apply custom colors for Kingdoms
+  labs(x = "Sample", y = "Relative Abundance (%)", fill = "Kingdom") +
+  theme_minimal(base_size = 16) +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 18, face = "bold", color = "#333333"),
+    axis.title.x = element_text(size = 16, face = "bold", margin = margin(t = 10)),
+    axis.title.y = element_text(size = 16, face = "bold", margin = margin(r = 10)),
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 12, color = "#4B0082"),
+    axis.text.y = element_text(size = 12, color = "#4B0082"),
+    legend.title = element_text(size = 14, face = "bold"),
+    legend.text = element_text(size = 12),
+    legend.position = "right",
+    panel.grid.major.y = element_line(color = "grey80", linetype = "dotted")
+  )
+
+# Print the enhanced plot
+print(p_kingdom)
+
+ggsave(p_kingdom, filename = "p_kingdom.png", width = 10, height = 8, dpi = 300)
+```
+
+
+
+### MAKE LIST OF TOP 20 TAXA BASED ON THEIR ABUNDANCES ACROSS THE ENTIRE RA (NOT NECESSARY)
+
+```{r}
+## Aggregate RA at species Level here
+full_ps_species <- tax_glom(full_ps_ra, "Species")
+# Subset the RA to exclude the controls
+#full_ps_species_ra_no_control <- subset_samples(full_ps_species, !site_specific %in% controls)
+# Convert to a data frame for easier manipulation
+df_all <- as.data.frame(otu_table(full_ps_species))
+# Summing the abundance across all samples for each species
+taxa_abundance <- rowSums(df_all)
+# Sorting in descending order
+sorted_taxa <- sort(taxa_abundance, decreasing = TRUE)
+# Getting the top 20 taxa
+top_taxa <- head(sorted_taxa, 20)
+# Extracting taxonomic information
+taxa_info <- tax_table(full_ps_species)[names(top_taxa), ]
+# Combining the abundance data with taxonomic information
+top_20 <- cbind(as.data.frame(taxa_info), Abundance = top_taxa)
+top_20
+# Save the result to a CSV file for future use
+write.csv(top_20, file = "Top_20_Taxa.csv", row.names = FALSE)
+```
+
+# finding the top 2 Viruses in the data for later steps (NOT NECESSARY)
+
+```{r}
+# Filter to include only taxa classified under the kingdom "Viruses"
+viruses_ps <- subset_taxa(full_ps_species, Kingdom == "Viruses")
+# Convert to a data frame
+df_viruses <- psmelt(viruses_ps)
+# Summing the abundance across all samples for each taxon within "Viruses"
+virus_abundance <- aggregate(Abundance ~ OTU, data = df_viruses, FUN = sum)
+# Sorting in descending order and selecting the top two
+top_viruses <- virus_abundance[order(-virus_abundance$Abundance), ][1:8, ]
+# Extracting taxonomic information for the top two viral taxa
+top_viruses_info <- tax_table(viruses_ps)[top_viruses$OTU, ]
+# Combining the abundance data with taxonomic information
+top_4_viruses <- cbind(as.data.frame(top_viruses_info), Abundance = top_viruses$Abundance)
+top_4_viruses
+```
+
+## Preps to start the overall relative abundance plot 
+
+```{r}
+#My RA without controls
+#full_ps_ra_no_control <- subset_samples(full_ps_ra, !site_specific %in% controls)
+# My phyloseq object before abundance without controls
+#full_ps_filtered_no_control <- subset_samples(full_ps_filtered, !site_specific %in% controls)
+
+ra <- full_ps_ra
+#View(ra@otu_table@.Data) #view the otu_table to confirm the transformation is successful
+df <- cbind(data.frame(tax_table(ra)), data.frame(otu_table(ra)))# create a dataframe (df) combining taxonomic information and OTU data in relative abundance 
+#View(df)
+df_sorted <- df[order(rowSums(df[, 8:ncol(df)]), decreasing=TRUE), ]#sort the dataframe based on the sum of values from column 8 (species) to the last column in decreasing order.
+View(df_sorted) #s epideermidis and proteus mirabilis come top 
+```
+
+## next steps in prep for RA 
+
+```{r}
+#the code below create a dataframe called bacteria_genus that summarises all the genus in the bacteria kingdom of the dataset
+bacteria_genus <- cbind(df_sorted$Genus[df_sorted$Kingdom == 'Bacteria'], df_sorted[df_sorted$Kingdom == 'Bacteria', 8:ncol(df_sorted)])
+#View(bacteria_genus)
+colnames(bacteria_genus)[1] <- 'Genus' #name the column "Genus
+bacteria_genus <- bacteria_genus[!(bacteria_genus == ''), ]#filtering out empty values 
+bacteria_genus <- bacteria_genus %>% group_by(Genus) %>% summarise_all(list(sum))# grouping and summarizing the data by genus
+bacteria_genus <- bacteria_genus[order(rowSums(bacteria_genus[,2:ncol(bacteria_genus)]), decreasing=T),]
+```
+
+
+## do the same ordering across phyla (based on dominant phyla seen in the classification above)
+
+```{r}
+# see the phylla names in the phyloseq to do steps below
+unique(full_ps_filtered@tax_table@.Data[,"Phylum"]) 
+```
+
+
+## coding for groups to visualize 
+
+```{r}
+actinobac_genus <- cbind(df_sorted$Genus[df_sorted$Phylum == 'Actinobacteria'], df_sorted[df_sorted$Phylum == 'Actinobacteria', 8:ncol(df_sorted)])
+colnames(actinobac_genus)[1] <- c('Genus')
+colnames(actinobac_genus)[1] <- c('Genus')
+actinobac_genus <- actinobac_genus[!(actinobac_genus$Genus == ''), ]
+actinobac_genus <- actinobac_genus %>% group_by(Genus) %>% summarise_all(list(sum))
+actinobac_genus <- actinobac_genus[order(rowSums(actinobac_genus[, 2:ncol(actinobac_genus)]), decreasing=T),]
+```
+
+#continue at species level 
+```{r}
+actinobac_species <- cbind(df_sorted$Genus[df_sorted$Phylum == 'Actinobacteria'], df_sorted$Species[df_sorted$Phylum == 'Actinobacteria'], df_sorted[df_sorted$Phylum == 'Actinobacteria', 8:ncol(df_sorted)])
+colnames(actinobac_species)[1:2] <- c('Genus', 'Species')
+actinobac_species <- actinobac_species[!(actinobac_species$Species == ''), ]
+actinobac_species <- actinobac_species %>% group_by(Species, Genus) %>% summarise_all(list(sum))
+actinobac_species <- actinobac_species[order(rowSums(actinobac_species[, 3:ncol(actinobac_species)]), decreasing=T),]
+```
+
+
+```{r}
+firmicutes_genus <- cbind(df_sorted$Genus[df_sorted$Phylum == 'Firmicutes'], df_sorted[df_sorted$Phylum == 'Firmicutes', 8:ncol(df_sorted)])
+colnames(firmicutes_genus)[1] <-'Genus'
+firmicutes_genus <- firmicutes_genus[!(firmicutes_genus$Genus == ''), ]
+firmicutes_genus <- firmicutes_genus %>% group_by(Genus) %>% summarise_all(list(sum))
+firmicutes_genus <- firmicutes_genus[order(rowSums(firmicutes_genus[, 2:ncol(firmicutes_genus)]), decreasing=T),]
+```
+
+
+```{r}
+firmicutes_species <- cbind(df_sorted$Genus[df_sorted$Phylum == 'Firmicutes'], df_sorted$Species[df_sorted$Phylum == 'Firmicutes'], df_sorted[df_sorted$Phylum == 'Firmicutes', 8:ncol(df_sorted)])
+colnames(firmicutes_species)[1:2] <- c('Genus', 'Species')
+firmicutes_species <- firmicutes_species[!(firmicutes_species$Species == ''), ]
+firmicutes_species <- firmicutes_species %>% group_by(Species, Genus) %>% summarise_all(list(sum))
+firmicutes_species <- firmicutes_species[order(rowSums(firmicutes_species[, 3:ncol(firmicutes_species)]), decreasing=T),]
+```
+
+# do genius and species in the same chunk
+```{r}
+proteobac_genus <- cbind(df_sorted$Genus[df_sorted$Phylum == 'Proteobacteria'], df_sorted[df_sorted$Phylum == 'Proteobacteria', 8:ncol(df_sorted)])
+colnames(proteobac_genus)[1] <-'Genus'
+proteobac_genus <- proteobac_genus[!(proteobac_genus$Genus == ''), ]
+proteobac_genus <- proteobac_genus %>% group_by(Genus) %>% summarise_all(list(sum))
+proteobac_genus <- proteobac_genus[order(rowSums(proteobac_genus[, 3:ncol(proteobac_genus)]), decreasing=T),]
+
+proteobac_species <- cbind(df_sorted$Genus[df_sorted$Phylum == 'Proteobacteria'], df_sorted$Species[df_sorted$Phylum == 'Proteobacteria'], df_sorted[df_sorted$Phylum == 'Proteobacteria', 8:ncol(df_sorted)])
+colnames(proteobac_species)[1:2] <- c('Genus', 'Species')
+proteobac_species <- proteobac_species[!(proteobac_species$Species == ''), ]
+proteobac_species <- proteobac_species %>% group_by(Species, Genus) %>% summarise_all(list(sum))
+proteobac_species <- proteobac_species[order(rowSums(proteobac_species[, 3:ncol(proteobac_species)]), decreasing=T),]
+```
+
+
+
+```{r}
+Bacteroidetes_genus <- cbind(df_sorted$Genus[df_sorted$Phylum == 'Bacteroidetes'], df_sorted[df_sorted$Phylum == 'Bacteroidetes', 8:ncol(df_sorted)])
+colnames(Bacteroidetes_genus)[1] <-'Genus'
+Bacteroidetes_genus <- Bacteroidetes_genus[!(Bacteroidetes_genus$Genus == ''), ]
+Bacteroidetes_genus <- Bacteroidetes_genus %>% group_by(Genus) %>% summarise_all(list(sum))
+Bacteroidetes_genus <- Bacteroidetes_genus[order(rowSums(Bacteroidetes_genus[, 3:ncol(Bacteroidetes_genus)]), decreasing=T),]
+
+Bacteroidetes_species <- cbind(df_sorted$Genus[df_sorted$Phylum == 'Bacteroidetes'], df_sorted$Species[df_sorted$Phylum == 'Bacteroidetes'], df_sorted[df_sorted$Phylum == 'Bacteroidetes', 8:ncol(df_sorted)])
+colnames(Bacteroidetes_species)[1:2] <- c('Genus', 'Species')
+Bacteroidetes_species <- Bacteroidetes_species[!(Bacteroidetes_species$Species == ''), ]
+Bacteroidetes_species <- Bacteroidetes_species %>% group_by(Species, Genus) %>% summarise_all(list(sum))
+Bacteroidetes_species <- Bacteroidetes_species[order(rowSums(Bacteroidetes_species[, 3:ncol(Bacteroidetes_species)]), decreasing=T),]
+```
+
+
+
+```{r}
+Campy_genus <- cbind(df_sorted$Genus[df_sorted$Phylum == 'Cyanobacteria'], df_sorted[df_sorted$Phylum == 'Cyanobacteria', 8:ncol(df_sorted)])
+colnames(Campy_genus)[1] <-'Genus'
+Campy_genus <- Campy_genus[!(Campy_genus$Genus == ''), ]
+Campy_genus <- Campy_genus %>% group_by(Genus) %>% summarise_all(list(sum))
+Campy_genus <- Campy_genus[order(rowSums(Campy_genus[, 3:ncol(Campy_genus)]), decreasing=T),]
+
+Campy_species <- cbind(df_sorted$Genus[df_sorted$Phylum == 'Cyanobacteria'], df_sorted$Species[df_sorted$Phylum == 'Cyanobacteria'], df_sorted[df_sorted$Phylum == 'Cyanobacteria', 8:ncol(df_sorted)])
+colnames(Campy_species)[1:2] <- c('Genus', 'Species')
+Campy_species <- Campy_species[!(Campy_species$Species == ''), ]
+Campy_species <- Campy_species %>% group_by(Species, Genus) %>% summarise_all(list(sum))
+Campy_species <- Campy_species[order(rowSums(Campy_species[, 3:ncol(Campy_species)]), decreasing=T),]
+```
+
+
+```{r}
+Basidio_genus <- cbind(df_sorted$Genus[df_sorted$Phylum == 'Basidiomycota'], df_sorted[df_sorted$Phylum == 'Basidiomycota', 8:ncol(df_sorted)])
+colnames(Basidio_genus)[1] <-'Genus'
+Basidio_genus <- Basidio_genus[!(Basidio_genus$Genus == ''), ]
+Basidio_genus <- Basidio_genus %>% group_by(Genus) %>% summarise_all(list(sum))
+Basidio_genus <- Basidio_genus[order(rowSums(Basidio_genus[, 3:ncol(Basidio_genus)]), decreasing=T),]
+
+Basidio_species <- cbind(df_sorted$Genus[df_sorted$Phylum == 'Basidiomycota'], df_sorted$Species[df_sorted$Phylum == 'Basidiomycota'], df_sorted[df_sorted$Phylum == 'Basidiomycota', 8:ncol(df_sorted)])
+colnames(Basidio_species)[1:2] <- c('Genus', 'Species')
+Basidio_species <- Basidio_species[!(Basidio_species$Species == ''), ]
+Basidio_species <- Basidio_species %>% group_by(Species, Genus) %>% summarise_all(list(sum))
+Basidio_species <- Basidio_species[order(rowSums(Basidio_species[, 3:ncol(Basidio_species)]), decreasing=T),]
+```
+
+
+```{r}
+Ascomycota_genus <- cbind(df_sorted$Genus[df_sorted$Phylum == 'Ascomycota'], df_sorted[df_sorted$Phylum == 'Ascomycota', 8:ncol(df_sorted)])
+colnames(Ascomycota_genus)[1] <-'Genus'
+Ascomycota_genus <- Ascomycota_genus[!(Ascomycota_genus$Genus == ''), ]
+Ascomycota_genus <- Ascomycota_genus %>% group_by(Genus) %>% summarise_all(list(sum))
+Ascomycota_genus <- Ascomycota_genus[order(rowSums(Ascomycota_genus[, 3:ncol(Ascomycota_genus)]), decreasing=T),]
+
+Ascomycota_species <- cbind(df_sorted$Genus[df_sorted$Phylum == 'Ascomycota'], df_sorted$Species[df_sorted$Phylum == 'Ascomycota'], df_sorted[df_sorted$Phylum == 'Ascomycota', 8:ncol(df_sorted)])
+colnames(Ascomycota_species)[1:2] <- c('Genus', 'Species')
+Ascomycota_species <- Ascomycota_species[!(Ascomycota_species$Species == ''), ]
+Ascomycota_species <- Ascomycota_species %>% group_by(Species, Genus) %>% summarise_all(list(sum))
+Ascomycota_species <- Ascomycota_species[order(rowSums(Ascomycota_species[, 3:ncol(Ascomycota_species)]), decreasing=T),]
+```
+
+
+
+```{r}
+Uroviricota_genus <- cbind(df_sorted$Genus[df_sorted$Phylum == 'Uroviricota'], df_sorted[df_sorted$Phylum == 'Uroviricota', 8:ncol(df_sorted)])
+colnames(Uroviricota_genus)[1] <-'Genus'
+Uroviricota_genus <- Uroviricota_genus[!(Uroviricota_genus$Genus == ''), ]
+Uroviricota_genus <- Uroviricota_genus %>% group_by(Genus) %>% summarise_all(list(sum))
+Uroviricota_genus <- Uroviricota_genus[order(rowSums(Uroviricota_genus[, 3:ncol(Uroviricota_genus)]), decreasing=T),]
+
+Uroviricota_species <- cbind(df_sorted$Genus[df_sorted$Phylum == 'Uroviricota'], df_sorted$Species[df_sorted$Phylum == 'Uroviricota'], df_sorted[df_sorted$Phylum == 'Uroviricota', 8:ncol(df_sorted)])
+colnames(Uroviricota_species)[1:2] <- c('Genus', 'Species')
+Uroviricota_species <- Uroviricota_species[!(Uroviricota_species$Species == ''), ]
+Uroviricota_species <- Uroviricota_species %>% group_by(Species, Genus) %>% summarise_all(list(sum))
+Uroviricota_species <- Uroviricota_species[order(rowSums(Uroviricota_species[, 3:ncol(Uroviricota_species)]), decreasing=T),]
+```
+
+
+```{r}
+Cossaviricota_genus <- cbind(df_sorted$Genus[df_sorted$Phylum == 'Euryarchaeota'], df_sorted[df_sorted$Phylum == 'Euryarchaeota', 8:ncol(df_sorted)])
+colnames(Cossaviricota_genus)[1] <-'Genus'
+Cossaviricota_genus <- Cossaviricota_genus[!(Cossaviricota_genus$Genus == ''), ]
+Cossaviricota_genus <- Cossaviricota_genus %>% group_by(Genus) %>% summarise_all(list(sum))
+Cossaviricota_genus <- Cossaviricota_genus[order(rowSums(Cossaviricota_genus[, 3:ncol(Cossaviricota_genus)]), decreasing=T),]
+
+Cossaviricota_species <- cbind(df_sorted$Genus[df_sorted$Phylum == 'Euryarchaeota'], df_sorted$Species[df_sorted$Phylum == 'Euryarchaeota'], df_sorted[df_sorted$Phylum == 'Euryarchaeota', 8:ncol(df_sorted)])
+colnames(Cossaviricota_species)[1:2] <- c('Genus', 'Species')
+Cossaviricota_species <- Cossaviricota_species[!(Cossaviricota_species$Species == ''), ]
+Cossaviricota_species <- Cossaviricota_species %>% group_by(Species, Genus) %>% summarise_all(list(sum))
+Cossaviricota_species <- Cossaviricota_species[order(rowSums(Cossaviricota_species[, 3:ncol(Cossaviricota_species)]), decreasing=T),]
+```
+
+
+#make a metadata_finder to link all relevant variables present in the data to show 
+
+```{r}
+metadata_finder = function(df, metadata){
+  Sample_ID = NULL
+  Sample_type = NULL
+  Collection_date = NULL
+  Hospital = NULL
+  visit = NULL
+  
+  for (i in as.character(df$variable)){
+    Sample_ID = append(Sample_ID, metadata$Sample_ID[metadata$Sample_ID == i])
+    Sample_type = append(Sample_type, metadata$Sample_type[metadata$Sample_ID == i])
+    Collection_date = append(Collection_date, metadata$Collection_date[metadata$Sample_ID == i])
+    Hospital = append(Hospital, metadata$Hospital[metadata$Sample_ID== i])
+    visit = append(visit, metadata$visit[metadata$Sample_ID== i])
+  }
+
+  df$Sample_ID <- Sample_ID
+  df$Sample_type <- Sample_type
+  df$Collection_date <- Collection_date
+  df$Hospital <- Hospital
+  df$visit <- visit
+  return(df)
+}
+```
+
+
+#make the color pallette to be used for coloring of taxa of intrest, top taxa
+
+```{r}
+color_pall <- c("Archaea" = "#3E4657",
+                'Bacteria (Others)'= "black",
+             "Actinobacteria (Other)" = "#FEEBE2",
+             "Bifidobacterium (Other)"="#FBB4B9",
+             "B. longum"="#F768A1",
+             "B. pseudocatenulatum"="#F34C12",
+             "Microbacterium foliorum"= "#AE017E",
+             "Cyanobacteria"="#D6604D",
+             "Firmicutes (Other)"="#CED9FB",
+             "Enterococcus"="#2171B5",
+             "Streptococcus"="#6699ff",
+             "Bacillus"="#00F5FF",
+             "Clostridium botulinum"="#052EFB",
+             "Proteobacteria"="#B9D1BF",
+             "Acinetobacter johnsonii"= "#03FC41",
+             "Acinetobacter baumannii"="#9AE5B0",
+             "Escherichia coli"= "#339F42",
+             "Pseudomonas putida"= "#0A7418",
+             "Klebsiella pneumoniae"="#064F10",
+             "Bacteroidetes"="grey",
+             "Viruses"="orange"
+             )
+```
+
+#define function for coloring.. to be consistent with names used in the color pallete above 
+
+```{r}
+TargetLvl1 <- function(df, mytab){
+  joinby <- 'Sample_ID'
+  target_taxa <- c("Archaea", 'Bacteria (Others)', 'Actinobacteria (Other)', 'Bifidobacterium (Other)','B. longum', 'B. pseudocatenulatum', 'Microbacterium foliorum','Cyanobacteria', 'Firmicutes (Other)', 'Enterococcus', 'Streptococcus', 'Bacillus', 'Clostridium botulinum', 'Proteobacteria', 'Acinetobacter johnsonii','Acinetobacter baumannii', 'Escherichia coli', 'Pseudomonas putida', 'Klebsiella pneumoniae', 'Bacteroidetes', 'Viruses')
+
+  df_origin <- df
+  df$Species <- gsub('_', ' ', df$Species)
+  #df <- df[!(df$Kingdom %in% c('Archaea')),]
+  taxa_only <- df[,c('Kingdom', 'Phylum', 'Class', 'Order', 'Family', 'Genus', 'Species')]
+  df <- melt(df, id=c('Kingdom', 'Phylum', 'Class', 'Order', 'Family', 'Genus', 'Species'))
+  df$Target <- df$Kingdom
+  
+  #df$Target[df$Kingdom == 'Archaea'] <- 'Archaea'
+  df$Target[df$Kingdom == 'Bacteria'] <- 'Bacteria (Others)'
+  #df$Target[df$Phylum == ' '] <- 'Others'
+    df$Target[df$Phylum == 'Actinobacteria'] <- 'Actinobacteria (Other)'
+      df$Target[df$Genus == 'Bifidobacterium'] <- 'Bifidobacterium (Other)'
+      df$Target[df$Genus == 'Bifidobacterium' & df$Species == 'longum'] <- 'B. longum'
+      df$Target[df$Genus == 'Bifidobacterium' & df$Species == 'pseudocatenulatum'] <- 'B. pseudocatenulatum'
+      df$Target[df$Genus == 'Microbacterium'] <- 'Microbacterium foliorum'
+      #df$Target[df$Genus == 'Cutibacterium' & df$Species == 'acnes'] <- 'C. acnes'
+      
+df$Target[df$Phylum == 'Cyanobacteria'] <- 'Cyanobacteria'
+  df$Target[df$Phylum == 'Firmicutes'] <- 'Firmicutes (Other)'
+  df$Target[df$Genus == 'Enterococcus'] <- 'Enterococcus'
+  df$Target[df$Genus == 'Streptococcus'] <- 'Streptococcus'
+  df$Target[df$Genus == 'Bacillus'] <- 'Bacillus'
+  df$Target[df$Genus == 'Clostridium' & df$Species == 'botulinum'] <- 'Clostridium botulinum'
+  #df$Target[df$Genus == 'Enterococcus' & df$Species == 'faecium'] <- 'Enterococcus faecium'
+  
+  
+  df$Target[df$Phylum == 'Proteobacteria'] <- 'Proteobacteria'
+  df$Target[df$Genus == 'Acinetobacter' & df$Species == 'johnsonii'] <- 'Acinetobacter johnsonii'
+  df$Target[df$Genus == 'Acinetobacter' & df$Species == 'baumannii'] <- 'Acinetobacter baumannii'
+  df$Target[df$Genus == 'Escherichia' & df$Species == 'coli'] <- 'Escherichia coli'
+  df$Target[df$Genus == 'Pseudomonas' & df$Species == 'putida'] <- 'Pseudomonas putida'
+  df$Target[df$Genus == 'Klebsiella' & df$Species == 'pneumoniae'] <- 'Klebsiella pneumoniae'
+  
+  df$Target[df$Phylum == 'Bacteroidetes'] <- 'Bacteroidetes'
+  #df$Target[df$Phylum == 'Campylobacterota'] <- 'Campylobacterota'
+  
+  #df$Target[df$Kingdom == 'Eukaryota'] <- 'Eukaryota (Others)'
+  #df$Target[df$Genus == 'Malassezia'] <- 'Malassezia'
+  #df$Target[df$Genus == 'Candida' & df$Species == 'albicans'] <- 'Candida albicans'
+
+  
+  df$Target[df$Kingdom == 'Viruses'] <- 'Viruses'
+  #df$Target[df$Genus == 'Betapapillomavirus'] <- 'Betapapillomavirus'
+
+  df$Target <- factor(df$Target, levels=target_taxa)
+  df$Kingdom <- NULL
+  df$Phylum <- NULL
+  df$Class <- NULL
+  df$Order <- NULL
+  df$Family <- NULL
+  df$Genus <- NULL
+  df$Species <- NULL
+  
+  df <- data.frame(df %>% group_by(variable, Target) %>% summarise_all(list(sum)))
+  df <- metadata_finder(df, mytab)
+  return(df)
+}
+```
+
+
+#making final tables 
+```{r}
+# sort the table by total relative abundances of species
+table_sorted=df_sorted
+#make sample data of the metadata and make sure the library_id is showing 
+sample <- read.csv("gil_filtered_metadata.csv")
+sorted_metadata = sample_data(sample, errorIfNULL = T)
+ready_metadata=sorted_metadata
+```
+
+
+```{r}
+require(data.table)
+```
+
+
+```{r}
+df3 <- TargetLvl1(table_sorted, ready_metadata)
+```
+
+
+```{r}
+p_ra_overall=ggplot(df3[df3$Sample_type != '', ]) +
+  aes(x=Sample_ID, y=value, fill=Target) +
+  geom_bar(stat="identity", position="fill", width=0.8) +
+  theme_bw(base_size=12) +
+  ylab('Relative Abundance') +
+  scale_y_continuous(breaks=c(0,0.25,0.5,0.75,1), labels=c('0', '', '50', '', '100'), limits=c(0,1)) +
+  theme(axis.title.x=element_blank(), axis.text.x=element_text(angle = 90, hjust=1, vjust=1),
+        axis.title.y=element_text(), axis.text.y=element_text()) +
+  theme(legend.key.size=unit(0.5, "cm"), panel.grid.minor=element_blank(), panel.grid.major=element_blank()) +
+  theme(legend.position='right') +
+  theme(legend.box="vertical", legend.title=element_text(), legend.text=element_text()) +
+  scale_fill_manual("Classification", values=color_pall) +
+  theme(strip.text.x=element_text(), strip.text.y=element_text(angle=0, ), strip.background=element_rect(fill="white")) +
+  guides(fill = guide_legend(reverse=FALSE, ncol=1)) +
+  theme(axis.text.x = element_text(size = 5))+
+  facet_wrap(~ Sample_type, scales = "free_x")
+p_ra_overall
+ggsave("p_ra_overall.png", p_ra_overall, width = 10, height = 6, dpi = 300)
+```
+
+
+
+```{r}
+p_ra_compare_date <- ggplot(df3[df3$Sample_type != '', ]) +
+  aes(x = Collection_date, y = value, fill = Target) +
+  geom_bar(stat = "identity", position = "fill", width = 0.8) +
+  theme_bw(base_size = 14) +  # Slightly larger base size for readability
+  ylab('Relative Abundance (%)') +  # Update y-axis label for clarity
+  scale_y_continuous(
+    breaks = c(0, 0.25, 0.5, 0.75, 1), 
+    labels = c('0', '', '50', '', '100'), 
+    limits = c(0, 1)
+  ) +
+  theme(
+    axis.title.x = element_blank(),
+    axis.text.x = element_text(angle = 90, hjust = 1, vjust = 1, size = 10, face = "bold"),  # Increased font size and made x-axis text bold
+    axis.title.y = element_text(size = 16, face = "bold"),  # Increased and bold y-axis label
+    axis.text.y = element_text(size = 12),  # Increased font size for y-axis text
+    legend.key.size = unit(0.6, "cm"),  # Slightly larger legend key size for better readability
+    panel.grid.minor = element_blank(),  # Removed minor grid lines for clarity
+    panel.grid.major = element_blank(),  # Removed major grid lines for cleaner look
+    legend.position = 'right',
+    legend.box = "vertical",
+    legend.title = element_text(size = 14, face = "bold"),  # Bold legend title
+    legend.text = element_text(size = 12),
+    strip.text.x = element_text(size = 14, face = "bold"),  # Bold and larger facet labels
+    strip.text.y = element_text(size = 14, face = "bold"),
+    strip.background = element_rect(fill = "white")
+  ) +
+  scale_fill_manual("Classification", values = color_pall) +
+  guides(fill = guide_legend(reverse = FALSE, ncol = 1)) +
+  facet_grid(Sample_type ~ Hospital, scales = "free_x")  # Faceting by rows (Sample_type) and columns (Hospital)
+
+# Print the plot
+print(p_ra_compare_date)
+ggsave("p_ra_compare_date.png", p_ra_compare_date, width = 10, height = 6, dpi = 300)
+```
+
+
+## differential analysis
+
+```{r}
+library(phyloseq)
+library(DESeq2)
+
+# Extract DESeq2 results
+dds <- phyloseq_to_deseq2(full_ps_filtered, ~ Hospital)
+dds <- DESeq(dds)
+res <- results(dds)
+
+# Get tax_table from phyloseq object and convert it to a data frame
+tax_table_df <- as.data.frame(tax_table(full_ps_filtered))
+
+# Add row names (OTU IDs) to the DESeq2 results as a column
+res$OTU <- rownames(res)
+
+# Merge DESeq2 results with taxonomic information
+res_df <- as.data.frame(res)
+res_merged <- merge(res_df, tax_table_df, by.x = "OTU", by.y = "row.names")
+
+# View the merged results
+print(res_merged)
+
+
+
+library(ggplot2)
+
+# Filter to keep only significant taxa (adjust p-value < 0.05)
+sig_res <- res_merged[which(res_merged$padj < 0.05), ]
+
+# Create a bar plot showing log2 fold changes for significant taxa
+p_diff_abundance_dseq <- ggplot(sig_res, aes(x = reorder(Genus, log2FoldChange), y = log2FoldChange, fill = log2FoldChange > 0)) +
+  geom_bar(stat = "identity", show.legend = FALSE) +
+  coord_flip() +
+  theme_minimal() +
+  labs(x = "Genus", y = "Log2 Fold Change (VNCH vs TBH)") +
+  scale_fill_manual(values = c("red", "blue")) +  # Red for decrease, blue for increase
+  theme(
+    axis.text.y = element_text(size = 10, face = "bold"),
+    axis.title = element_text(size = 12, face = "bold"),
+    plot.title = element_text(hjust = 0.5, size = 14, face = "bold")
+  )
+
+# Print the plot
+print(p_diff_abundance_dseq)
+
+ggsave("p_diff_abundance_dseq.png", p_diff_abundance_dseq, width = 8, height = 6, dpi = 300)
+
+```
+
+
+```{r}
+#install.packages("ggrepel")
+library(ggrepel)
+library(ggplot2)
+
+# Extract DESeq2 results
+dds <- phyloseq_to_deseq2(full_ps_filtered, ~ Hospital)
+dds <- DESeq(dds)
+res <- results(dds)
+
+# Get tax_table from phyloseq object and convert it to a data frame
+tax_table_df <- as.data.frame(tax_table(full_ps_filtered))
+
+# Add row names (OTU IDs) to the DESeq2 results as a column
+res$OTU <- rownames(res)
+
+# Merge DESeq2 results with taxonomic information
+res_df <- as.data.frame(res)
+res_merged <- merge(res_df, tax_table_df, by.x = "OTU", by.y = "row.names")
+
+# Add column for -log10(p-value) for visualization
+res_merged$logP <- -log10(res_merged$pvalue)
+
+
+# Remove rows with NA adjusted p-values
+res_filtered <- res_merged[!is.na(res_merged$padj), ]
+
+# Create a volcano plot with consistent color scheme
+volcano_plot <- ggplot(res_filtered, aes(x = log2FoldChange, y = logP, label = Genus)) +
+  geom_point(aes(color = ifelse(log2FoldChange > 0, "VNCH", "TBH")), size = 3) +  # Color based on log2 fold change direction
+  scale_color_manual(values = c("TBH" = "red", "VNCH" = "blue"), labels = c("TBH", "VNCH")) +
+  geom_text_repel(
+    data = res_filtered[which(res_filtered$padj < 0.05), ],
+    aes(label = Genus),
+    size = 3,
+    max.overlaps = 10
+  ) +
+  geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "blue") +  # Add significance threshold line
+  theme_minimal() +
+  labs(x = "Log2 Fold Change (VNCH vs TBH)", y = "-log10(p-value)", color = "Hospital") +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+    axis.title = element_text(size = 14, face = "bold"),
+    axis.text = element_text(size = 12)
+  ) #+
+  #ggtitle("Volcano Plot: Differential Abundance of Taxa by Hospital")
+
+# Print the plot
+print(volcano_plot)
+ggsave("volcano_plot.png", volcano_plot, width = 8, height = 6, dpi = 300)
+```
+
+
+## Differential abundance by treatment 
+
+```{r}
+#install.packages("ggrepel")
+library(ggrepel)
+library(ggplot2)
+
+# Extract DESeq2 results
+dds <- phyloseq_to_deseq2(full_ps_filtered, ~ Sample_type)
+dds <- DESeq(dds)
+res <- results(dds)
+
+# Get tax_table from phyloseq object and convert it to a data frame
+tax_table_df <- as.data.frame(tax_table(full_ps_filtered))
+
+# Add row names (OTU IDs) to the DESeq2 results as a column
+res$OTU <- rownames(res)
+
+# Merge DESeq2 results with taxonomic information
+res_df <- as.data.frame(res)
+res_merged <- merge(res_df, tax_table_df, by.x = "OTU", by.y = "row.names")
+
+# Add column for -log10(p-value) for visualization
+res_merged$logP <- -log10(res_merged$pvalue)
+
+
+# Remove rows with NA adjusted p-values
+res_filtered <- res_merged[!is.na(res_merged$padj), ]
+
+# Create a volcano plot with consistent color scheme
+volcano_plot_treat <- ggplot(res_filtered, aes(x = log2FoldChange, y = logP, label = Genus)) +
+  geom_point(aes(color = ifelse(log2FoldChange > 0, "Raw", "Treated")), size = 3) +  # Color based on log2 fold change direction
+  scale_color_manual(values = c("Raw" = "red", "Treated" = "blue"), labels = c("Raw", "Treated")) +
+  geom_text_repel(
+    data = res_filtered[which(res_filtered$padj < 0.05), ],
+    aes(label = Genus),
+    size = 3,
+    max.overlaps = 10
+  ) +
+  geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "blue") +  # Add significance threshold line
+  theme_minimal() +
+  labs(x = "Log2 Fold Change (Raw vs Treated)", y = "-log10(p-value)", color = "Sample_type") +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+    axis.title = element_text(size = 14, face = "bold"),
+    axis.text = element_text(size = 12)
+  ) 
+
+# Print the plot
+print(volcano_plot_treat)
+#ggsave("volcano_plot_treat.png", volcano_plot_treat, width = 8, height = 6, dpi = 300)
+```
+
+
+
+
+
+
+
+
+
+
+
+
