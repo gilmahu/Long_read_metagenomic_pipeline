@@ -5,9 +5,9 @@
 **Figure:** Overview of the Long-Read Metagenomic Analysis Pipeline.
 
 
-Long-Read Metagenomic Analysis Pipeline
+#**Long-Read Metagenomic Analysis Pipeline**
 
-**Overview**
+#**Overview**
 
 This repository contains a complete pipeline for analyzing long-read metagenomic data generated from Nanopore sequencing. The pipeline covers demultiplexing, quality control, host genome removal (like human or animal), taxonomic classification, abundance estimation, and antimicrobial resistance gene (ARG) detection. The analysis is completed using both R and Jupyter Notebook for comprehensive data visualization.
 
