@@ -18,16 +18,16 @@ This repository contains a complete pipeline for analyzing long-read metagenomic
 **Long-Read Metagenomic Analysis Pipeline/**
 
 
-├── scripts/               # Shell scripts for each analysis step
+a. scripts/                      # Shell scripts for each analysis step
 
 
-├── notebooks/             # Jupyter Notebook for ARG analysis
+b. notebooks/                    # Jupyter Notebook for ARG analysis
 
 
-├─R_analysis/              # R Markdown file for compositional analysis
+c. R_analysis/                    # R Markdown file for compositional analysis
 
 
-└── README.md              # This documentation file
+d. README.md                      # This documentation file
 
 
 **Installation & Dependencies**
