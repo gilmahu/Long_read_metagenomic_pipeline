@@ -61,7 +61,7 @@ conda create -n icrect_env guppy seqkit filtlong minimap2 samtools kraken2 brack
 
 conda activate icrect_env
 
-Pipeline Workflow (Individual Steps)
+# Pipeline Workflow (Individual Steps)
 
 
 
