@@ -36,12 +36,19 @@ This pipeline requires the following tools:
 
 
 Conda/Mamba for environment management
+
 Guppy for demultiplexing
+
 SeqKit for deduplication
+
 Filtlong for quality filtration
+
 Minimap2 & Samtools for host genome removal
+
 Kraken2 & Bracken for taxonomic classification and abundance estimation
+
 RGI for ARG detection
+
 Jupyter Notebook and R for downstream analysis
 
 
@@ -51,7 +58,9 @@ Jupyter Notebook and R for downstream analysis
 You can set up the environment with Conda:
 
 conda create -n icrect_env guppy seqkit filtlong minimap2 samtools kraken2 bracken rgi jupyter r-essentials
+
 conda activate icrect_env
+
 Pipeline Workflow (Individual Steps)
 
 
@@ -61,6 +70,7 @@ Pipeline Workflow (Individual Steps)
 Demultiplex the raw reads using Guppy:
 
 bash scripts/demultiplex.sh
+
 Output: results/demultiplexed/
 
 
@@ -70,6 +80,7 @@ Output: results/demultiplexed/
 Remove duplicate reads using SeqKit:
 
 bash scripts/deduplicate.sh
+
 Output: results/deduplicated/
 
 
@@ -79,6 +90,7 @@ Output: results/deduplicated/
 Filter low-quality reads using Filtlong:
 
 bash scripts/filter.sh
+
 Output: results/filtered/
 
 
@@ -88,6 +100,7 @@ Output: results/filtered/
 Align reads to the host genome and filter out host-aligned reads using Minimap2 and Samtools:
 
 bash scripts/host_removal.sh
+
 Output: results/host_removed/
 
 
@@ -97,6 +110,7 @@ Output: results/host_removed/
 Classify reads using Kraken2:
 
 bash scripts/kraken_classification.sh
+
 Output: results/kraken_results/
 
 
@@ -106,6 +120,7 @@ Output: results/kraken_results/
 Refine taxonomic classification using Bracken:
 
 bash scripts/run_bracken.sh
+
 Output: results/bracken_results/
 
 
@@ -115,6 +130,7 @@ Output: results/bracken_results/
 Convert the Bracken results to a BIOM format for R analysis:
 
 bash scripts/export_biom.sh
+
 Output: results/biom_output/icrect_biom.json
 
 
@@ -124,6 +140,7 @@ Output: results/biom_output/icrect_biom.json
 Run the R Markdown file for compositional analysis using Phyloseq:
 
 Rscript -e "rmarkdown::render('R_analysis/ICRECT_hww_biom.Rmd')"
+
 Output: R_analysis/ICRECT_hww_biom.html
 
 
@@ -133,7 +150,9 @@ Output: R_analysis/ICRECT_hww_biom.html
 Run the Jupyter Notebook for antimicrobial resistance gene (ARG) analysis:
 
 conda activate icrect_env
+
 jupyter nbconvert --execute notebooks/ARG_Mapping_rgi_bwt_ONT.ipynb --to html
+
 Output: notebooks/ARG_Mapping_rgi_bwt_ONT.html
 
 
@@ -146,13 +165,16 @@ Output: notebooks/ARG_Mapping_rgi_bwt_ONT.html
 You can run the entire pipeline in one command using the master script (run_pipeline.sh):
 
 
-How to Use the Master Script
+How to Use the Master Script:
+
 Activate the conda environment and run the master script:
 
 
-**conda activate icrect_env
+conda activate icrect_env
+
 ./run_pipeline.sh
-The master script runs all steps sequentially and saves the results in the results/ folder.**
+
+The master script runs all steps sequentially and saves the results in the results/ folder.
 
 
 **Expected Output**
@@ -161,11 +183,17 @@ The pipeline generates the following outputs:
 
 
 Demultiplexed and deduplicated FASTQ files
+
 Filtered reads and cleaned BAM files
+
 Taxonomic classification reports (*_report.txt)
+
 Abundance estimates (*_bracken.txt)
+
 BIOM file for R analysis (icrect_biom.json)
+
 Compositional analysis report (ICRECT_hww_biom.html)
+
 ARG analysis report (ARG_Mapping_rgi_bwt_ONT.html)
 
 
