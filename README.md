@@ -168,7 +168,7 @@ Output: notebooks/ARG_Mapping_rgi_bwt_ONT.html
 
 
 
-You can run the entire pipeline in one command using the master script (run_pipeline.sh):
+**You can run the entire pipeline in one command using the master script (run_pipeline.sh):**
 
 
 How to Use the Master Script:
