@@ -2,7 +2,7 @@
 
 ![Pipeline Flow](Fig1_Overall_workflow.png)
 
-**Figure:** Overview of the ICRECT Long-Read Metagenomic Analysis Pipeline.
+**Figure:** Overview of the Long-Read Metagenomic Analysis Pipeline.
 
 
 Long-Read Metagenomic Analysis Pipeline
